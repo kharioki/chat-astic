@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ApolloClient,
   InMemoryCache,
   ApolloProvider,
   useQuery,
+  useMutation,
   gql
 } from '@apollo/client';
-import { Container } from 'shards-react';
+import { Container, Row, Col, FormInput, Button } from 'shards-react';
 
 const client = new ApolloClient({
   uri: 'http://localhost:4000/',
@@ -23,8 +24,16 @@ const GET_MESSAGES = gql`
   }
 `;
 
+const POST_MESSAGE = gql`
+  mutation($user: String!, $content: String!) {
+    postMessage(user: $user, content: $content)
+  }
+`;
+
 const Messages = ({ user }) => {
-  const { data } = useQuery(GET_MESSAGES);
+  const { data } = useQuery(GET_MESSAGES, {
+    pollInterval: 500
+  });
   if (!data) {
     return null;
   }
@@ -72,9 +81,62 @@ const Messages = ({ user }) => {
 };
 
 const Chat = () => {
+  const [state, setState] = useState({
+    user: 'Tony',
+    content: ''
+  });
+
+  const [postMessage] = useMutation(POST_MESSAGE);
+
+  const onSend = () => {
+    if (state.content.length > 0) {
+      postMessage({
+        variables: state
+      });
+    }
+
+    setState({
+      ...state,
+      content: ''
+    });
+  };
   return (
     <Container>
-      <Messages user="Ton" />
+      <Messages user={state.user} />
+      <Row>
+        <Col xs={2} style={{ padding: 0 }}>
+          <FormInput
+            label="User"
+            value={state.user}
+            onChange={evt =>
+              setState({
+                ...state,
+                user: evt.target.value
+              })
+            }
+          />
+        </Col>
+        <Col xs={8}>
+          <FormInput
+            label="Content"
+            value={state.content}
+            onChange={evt =>
+              setState({
+                ...state,
+                content: evt.target.value
+              })
+            }
+            onKeyUp={evt => {
+              if (evt.keyCode === 13) {
+                onSend();
+              }
+            }}
+          />
+        </Col>
+        <Col xs={2} style={{ padding: 0 }}>
+          <Button onClick={() => onSend()}>Send</Button>
+        </Col>
+      </Row>
     </Container>
   );
 };
